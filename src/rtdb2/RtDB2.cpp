@@ -178,18 +178,23 @@ int RtDB2::wait_for_put(const std::string& key, int db_src) {
 
 
         // Create semaphore
-        if(sem_init(&syncPoint.semaphore, 1, 0) != 0)
+        syncPoint.sem_ID = semget(IPC_PRIVATE, 1, 0);
+        if(syncPoint.sem_ID < 0)
+        {
             return RTDB2_FAILED_SEMAPHORE_CREATION;
+        }
 
         it->second->append_to_sync_list(key, syncPoint);
     }
 
     // Wait semaphore
-    if(sem_wait(&syncPoint.semaphore) != 0)
+    struct sembuf op_down = {0,-1,0};
+    int ret = semop(syncPoint.sem_ID, &op_down, 1);
+    if(ret < 0)
         return RTDB2_FAILED_SEMAPHORE_WAIT;
 
     // Destroy the created semaphore
-    sem_destroy(&syncPoint.semaphore);
+    semctl(syncPoint.sem_ID, 0, IPC_RMID);
 
     return RTDB2_SUCCESS;
 }

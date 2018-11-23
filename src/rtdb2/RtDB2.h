@@ -8,6 +8,7 @@
 #include <boost/shared_ptr.hpp>
 #include <sstream>
 #include <sys/time.h>
+#include <iostream>
 
 #include "RtDB2Definitions.h"
 #include "RtDB2ErrorCode.h"
@@ -92,15 +93,24 @@ int RtDB2::put_core(std::string key, T* value, int life, int db_dst) {
 
     // Wake up all ITEM "consumers"
     auto it = sync_.find(db_dst);
+    if(it == sync_.end())
+    {
+        it = sync_.insert(std::pair<int, boost::shared_ptr<RtDB2Storage> >(
+                db_dst, boost::make_shared<RtDB2LMDB>(path_, create_agent_sync_name(db_dst)))).first;
+    }
+    
     if(it != sync_.end())
     {
         std::vector<RtDB2SyncPoint> syncList;
         if(it->second->get_sync_list(key, &syncList) == RTDB2_SUCCESS)
         {
             for(unsigned int i = 0; i < syncList.size(); i++)
-                sem_post(&syncList[i].semaphore);
+            {
+                struct sembuf op_up = {0,1,0};
+                semop(syncList[i].sem_ID, &op_up, 1);
+            }
         }
-        
+
         it->second->clear_sync_list(key);
     }
 

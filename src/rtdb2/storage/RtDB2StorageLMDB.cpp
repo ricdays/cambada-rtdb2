@@ -131,7 +131,7 @@ int RtDB2LMDB::fetch_all_data(std::vector<std::pair<std::string, std::string> >&
 }
 
 int RtDB2LMDB::append_to_sync_list(const std::string& key, const RtDB2SyncPoint& syncPoint) {
-    if (init_operation(true) != RTDB2_SUCCESS)
+    if (init_operation(false) != RTDB2_SUCCESS)
         return RTDB2_KEY_NOT_FOUND;
 
     int err;
@@ -192,7 +192,7 @@ int RtDB2LMDB::get_sync_list(const std::string& key, std::vector<RtDB2SyncPoint>
 }
 
 int RtDB2LMDB::clear_sync_list(const std::string& key) {
-    if (init_operation(true) != RTDB2_SUCCESS)
+    if (init_operation(false) != RTDB2_SUCCESS)
         return RTDB2_KEY_NOT_FOUND;
 
     MDB_txn *txn;
