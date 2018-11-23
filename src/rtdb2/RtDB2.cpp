@@ -4,6 +4,8 @@
 #include "compressor/RtDB2CompressorZstd.h"
 #include "compressor/RtDB2CompressorLZ4.h"
 
+#include "RtDB2SyncPoint.h"
+
 void RtDB2::construct_priv() 
 {
     const CompressorSettings compressor_settings_ = configuration_.get_compressor_settings();
@@ -50,6 +52,14 @@ std::string RtDB2::create_agent_name(int db_identifier, bool shared) {
         stream << "shared";
     else
         stream << "local";
+    stream << db_identifier;
+    return stream.str();
+}
+
+std::string RtDB2::create_agent_sync_name(int db_identifier) {
+    std::stringstream stream;
+    stream << DB_PREPEND_NAME;
+    stream << "_sync";
     stream << db_identifier;
     return stream.str();
 }
@@ -148,6 +158,35 @@ int RtDB2::get_batch(std::string& batch, bool exclude_local, bool compress) {
     }
     batch_counter_ += 1;
     return 0;
+}
+
+int RtDB2::wait_for_put(const std::string& key, int db_src) {
+    
+    RtDB2SyncPoint syncPoint = RtDB2SyncPoint();
+    // TODO: check if registration is needed?
+
+    // Auto-Register if needed
+    {
+        auto it = sync_.find(db_src);
+        if(it == sync_.end())
+        {
+            it = sync_.insert(std::pair<int, boost::shared_ptr<RtDB2Storage> >(
+                    db_src, boost::make_shared<RtDB2LMDB>(path_, create_agent_sync_name(db_src)))).first;
+        }
+
+        boost::shared_ptr<RtDB2Storage> ptr = it->second;
+
+
+        // Create semaphore
+        if(sem_init(&syncPoint.semaphore, 1, 0) != 0)
+            return RTDB2_FAILED_SEMAPHORE_CREATION;
+
+        it->second->append_to_sync_list(key, syncPoint);
+    }
+
+    // Wait semaphore
+    if(sem_wait(&syncPoint.semaphore) != 0)
+        return RTDB2_FAILED_SEMAPHORE_WAIT;
 }
 
 void RtDB2::put_timestamp(std::string &dst, int life) {

@@ -45,11 +45,15 @@ public:
     int get(int key, T* value, int& life, int db_src);
     int get_batch(std::string& batch, bool exclude_local = true, bool compress = true);
 
+    // Waits for the NEXT put
+    int wait_for_put(const std::string& key, int db_src);
+
     const RtDB2Configuration& get_configuration() const;
 private:
     template <typename T>
     int put_core(std::string key, T* value, int life, int db_dst);
     std::string create_agent_name(int db_identifier, bool shared = true);
+    std::string create_agent_sync_name(int db_identifier);
     boost::shared_ptr<RtDB2Storage>& get_remote_ptr(int db_identifier);
     void construct_priv();
 
@@ -63,6 +67,9 @@ private:
     std::map<int, boost::shared_ptr<RtDB2Storage> > remote_;
     boost::shared_ptr<RtDB2Storage> local_;
     boost::shared_ptr<RtDB2Compressor> compressor_;
+
+    // Storage for sync
+    std::map<int, boost::shared_ptr<RtDB2Storage> > sync_;
 
     unsigned int batch_counter_;
 };

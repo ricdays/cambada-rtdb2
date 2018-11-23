@@ -5,6 +5,8 @@
 #include "../RtDB2ErrorCode.h"
 #include "../RtDB2Definitions.h"
 
+#include <semaphore.h>
+
 RtDB2LMDB::RtDB2LMDB(std::string parent_path, std::string name) : is_initialized_(false)
 {
     std::stringstream file_path;
@@ -126,6 +128,85 @@ int RtDB2LMDB::fetch_all_data(std::vector<std::pair<std::string, std::string> >&
     mdb_cursor_close(cursor);
     mdb_txn_abort(txn);
     return 0;
+}
+
+int RtDB2LMDB::append_to_sync_list(const std::string& key, const RtDB2SyncPoint& syncPoint) {
+    if (init_operation(true) != RTDB2_SUCCESS)
+        return RTDB2_KEY_NOT_FOUND;
+
+    int err;
+    MDB_txn *txn;
+    
+    mdb_txn_begin(env_, NULL, 0, &txn);
+
+    MDB_val obj_key, obj_data;
+    obj_key.mv_size = key.size();
+    obj_key.mv_data = const_cast<char*>(key.c_str());
+    err = mdb_get(txn, dbi_, &obj_key, &obj_data);
+
+    std::vector<RtDB2SyncPoint> list;
+
+    if(!err) // key is present, get list back
+    {
+        int nElements = obj_data.mv_size / sizeof(RtDB2SyncPoint);
+        list.resize(nElements + 1);
+        memcpy(&list[0], obj_data.mv_data, obj_data.mv_size);
+        list[nElements] = syncPoint;
+    }else{
+        list.push_back(syncPoint);
+    }
+
+    obj_data.mv_size += sizeof(RtDB2SyncPoint); 
+    obj_data.mv_data = (&list[0]);
+
+    mdb_put(txn, dbi_, &obj_key, &obj_data, 0);
+
+    mdb_txn_commit(txn);
+
+    return RTDB2_SUCCESS;
+}
+
+int RtDB2LMDB::get_sync_list(const std::string& key, std::vector<RtDB2SyncPoint>* list) {
+    if (init_operation(true) != RTDB2_SUCCESS)
+        return RTDB2_KEY_NOT_FOUND;
+
+    int err;
+    MDB_txn *txn;
+    
+    mdb_txn_begin(env_, NULL, 0, &txn);
+
+    MDB_val obj_key, obj_data;
+    obj_key.mv_size = key.size();
+    obj_key.mv_data = const_cast<char*>(key.c_str());
+    err = mdb_get(txn, dbi_, &obj_key, &obj_data);
+
+    if(!err) // key is present, get list back
+    {
+        int nElements = obj_data.mv_size / sizeof(RtDB2SyncPoint);
+        list->resize(nElements);
+        memcpy(&(*list)[0], obj_data.mv_data, obj_data.mv_size);
+    }
+    mdb_txn_abort(txn);
+
+    return RTDB2_SUCCESS;
+}
+
+int RtDB2LMDB::clear_sync_list(const std::string& key) {
+    if (init_operation(true) != RTDB2_SUCCESS)
+        return RTDB2_KEY_NOT_FOUND;
+
+    MDB_txn *txn;
+    MDB_val obj_key, obj_data;
+    obj_key.mv_size = key.size();
+    obj_key.mv_data = const_cast<char*>(key.c_str());
+
+    mdb_txn_begin(env_, NULL, 0, &txn);
+    obj_data.mv_size = 0; 
+    obj_data.mv_data = NULL;
+    mdb_put(txn, dbi_, &obj_key, &obj_data, 0);
+    mdb_txn_commit(txn);
+
+    return RTDB2_SUCCESS;
 }
 
 int RtDB2LMDB::insert_batch(const std::vector<std::pair<std::string, std::string> >& values) {

@@ -15,6 +15,10 @@ public:
     virtual int fetch(std::string key, std::string& value);
     virtual int fetch_all_data(std::vector<std::pair<std::string, std::string> >& values);
 
+    virtual int append_to_sync_list(const std::string& key, const RtDB2SyncPoint& syncPoint);
+    virtual int get_sync_list(const std::string& key, std::vector<RtDB2SyncPoint>* list);
+    virtual int clear_sync_list(const std::string& key);
+
     virtual std::ostream& dump(std::ostream&);
 private:
     // This function might be used to force initialise the storage,
