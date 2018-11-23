@@ -89,6 +89,21 @@ int RtDB2::put_core(std::string key, T* value, int life, int db_dst) {
     } else {
         local_->insert(key, serialized_data);
     }
+
+    // Wake up all ITEM "consumers"
+    auto it = sync_.find(db_dst);
+    if(it != sync_.end())
+    {
+        std::vector<RtDB2SyncPoint> syncList;
+        if(it->second->get_sync_list(key, &syncList) == RTDB2_SUCCESS)
+        {
+            for(unsigned int i = 0; i < syncList.size(); i++)
+                sem_post(&syncList[i].semaphore);
+        }
+        
+        it->second->clear_sync_list(key);
+    }
+
     return RTDB2_SUCCESS;
 }
 

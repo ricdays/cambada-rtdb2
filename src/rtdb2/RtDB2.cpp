@@ -115,7 +115,7 @@ int RtDB2::put_batch(int db_identifier, const std::string &batch, int life, bool
 int RtDB2::get_batch(std::string& batch, bool exclude_local, bool compress) {
     int err;
     std::vector<std::pair<std::string, std::string> > data;
-    std::map<int, boost::shared_ptr<RtDB2Storage> >::iterator it = remote_.find(db_identifier_);
+    //std::map<int, boost::shared_ptr<RtDB2Storage> >::iterator it = remote_.find(db_identifier_);
     get_remote_ptr(db_identifier_)->fetch_all_data(data);
 
     if (!exclude_local) {
@@ -187,6 +187,11 @@ int RtDB2::wait_for_put(const std::string& key, int db_src) {
     // Wait semaphore
     if(sem_wait(&syncPoint.semaphore) != 0)
         return RTDB2_FAILED_SEMAPHORE_WAIT;
+
+    // Destroy the created semaphore
+    sem_destroy(&syncPoint.semaphore);
+
+    return RTDB2_SUCCESS;
 }
 
 void RtDB2::put_timestamp(std::string &dst, int life) {
