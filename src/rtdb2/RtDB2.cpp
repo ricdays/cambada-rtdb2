@@ -178,7 +178,7 @@ int RtDB2::wait_for_put(const std::string& key, int db_src) {
 
 
         // Create semaphore
-        syncPoint.sem_ID = semget(IPC_PRIVATE, 1, 0);
+        syncPoint.sem_ID = semget(IPC_PRIVATE, 1, IPC_CREAT | 0660);
         if(syncPoint.sem_ID < 0)
         {
             return RTDB2_FAILED_SEMAPHORE_CREATION;
