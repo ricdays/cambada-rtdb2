@@ -6,7 +6,7 @@ rm -rf /tmp/rtdb2_storage
 rm -rf /tmp/{producer,consumer}*.txt
 
 # uncomment next line to test progression using the new WAIT
-# export WAIT_ENABLED=1
+export WAIT_ENABLED=1
 
 # comment/uncomment consumers/producers as desired
 

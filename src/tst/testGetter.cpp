@@ -29,7 +29,8 @@ int main(int argc, char **argv)
     std::string storage = "/tmp/rtdb2_storage";
     T value;
     int pid = getpid();
-    bool waitEnabled = false;
+    bool waitEnabled = true;
+    /*
     char* tmp;
     tmp = getenv("WAIT_ENABLED");
     if (tmp != 0) 
@@ -37,8 +38,10 @@ int main(int argc, char **argv)
         if (strcmp(tmp, "1"))
         {
             waitEnabled = true;
+            printf("PROGRESSION TEST\n");
         }
     }
+    */
     float frequency = 10;
     float jitter = 0.1;
     float dutyCycle = 0.3;
@@ -88,7 +91,7 @@ int main(int argc, char **argv)
         // sleep for a random period?
         if (waitEnabled)
         {
-            //rtdb->waitForPut(key, agentId);
+            rtdb->wait_for_put(key, agentId);
         }
         else
         {
